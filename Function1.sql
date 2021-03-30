@@ -9,5 +9,5 @@ BEGIN
    ELSE
       RETURN pto_date;
    END IF;
-END; -- fn_GetAnchorDt
+END; -- fn_GetAnchorD
 /
