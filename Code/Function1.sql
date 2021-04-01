@@ -7,7 +7,8 @@ BEGIN
    ELSIF TRUNC(SYSDATE) < pfrom_date THEN
       RETURN pfrom_date;
    ELSE
-      RETURN pto_date;
+     -- RETURN pto_date;
+     Null;
    END IF;
 END; -- fn_GetAnchorD
 /
