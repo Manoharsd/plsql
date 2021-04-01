@@ -9,3 +9,4 @@ CREATE OR REPLACE PACKAGE Security IS
 	--Column VPD
   function Column_Security(Owner varchar2, Object varchar2) return varchar2;
 END;
+
