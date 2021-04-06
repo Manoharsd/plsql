@@ -1,7 +1,7 @@
-create or replace PACKAGE pk_fetch_bulk_with_stndrd
+create or replace PACKAGE pk_fetch_bulk_without_stndrd
 AS
 /******************************************************************************
-   NAME:       PK_FETCH_BULK_WITH_STNDRD
+   NAME:       PK_FETCH_BULK_WITHOUT_STNDRD
    PURPOSE:   To validate Sonarqube Rule: AvoidFetchBulkCollectIntoWithoutLimitCheck
 
    REVISIONS:
@@ -15,7 +15,6 @@ AS
                               p_total_error_recs          OUT NUMBER,
                               p_total_succesful_recs      OUT NUMBER);
    c_oprtnl_flag                CONSTANT CHAR (1) := 'A';
-   c_limit                  NUMBER := 1000; -- Added limit
     CURSOR g_cur_get_pa_line_info(cp_pa_rqst_sid IN pa_request.pa_rqst_sid%TYPE) 
   IS
      SELECT PAPROC.PA_RQST_PRCDR_SID,
@@ -50,7 +49,7 @@ AS
         paproc.line_nmbr,
         paproc.procedure_iid,
         paproc.status_Cid as prcdr_status_cid,
-		parqsvc.x12_pa_srvc_type_code          --Ver 1.8
+		parqsvc.x12_pa_srvc_type_code
    FROM pa_request_procedure paproc,
         pa_request_service parqsvc,
         pa_request parq,
@@ -72,12 +71,12 @@ AS
   
   TYPE nt_pa_ln_info IS TABLE  OF g_cur_get_pa_line_info%ROWTYPE;
    gt_pa_ln_info  nt_pa_ln_info  := nt_pa_ln_info();
-END pk_fetch_bulk_with_stndrd;
+END pk_fetch_bulk_without_stndrd;
 /
-create or replace PACKAGE BODY pk_fetch_bulk_with_stndrd
+create or replace PACKAGE BODY pk_fetch_bulk_without_stndrd
 AS
 /******************************************************************************
-   NAME:       PK_FETCH_BULK_WITH_STNDRD
+   NAME:       PK_FETCH_BULK_WITHOUT_STNDRD
    PURPOSE:   To validate Sonarqube Rule: AvoidFetchBulkCollectIntoWithoutLimitCheck
 
    REVISIONS:
@@ -85,7 +84,6 @@ AS
    -------  ------------  -------------  ------------------------------------
    1.0       04/05/2021      Sridevi        Created this procedure.
 ******************************************************************************/
---> Fetch bulk collect approach 1 (limit with looping)
    PROCEDURE pr_move_edifecs (p_interface_sid          IN     NUMBER,
                               p_interface_run_sid      IN     NUMBER,
                               p_total_records             OUT NUMBER,
@@ -119,9 +117,11 @@ AS
        WHERE UPPER (ctgry) = v_ctgry AND oprtnl_flag = 'A';
 
       OPEN c1;
-      LOOP
+
       FETCH c1
-      BULK COLLECT INTO c1_rec LIMIT c_limit; -- Added limit with loop
+      BULK COLLECT INTO c1_rec;
+
+      CLOSE c1;
 
       FOR i IN c1_rec.FIRST .. c1_rec.LAST
       LOOP
@@ -191,10 +191,7 @@ AS
                EXIT;
          END;
       END LOOP;
-        EXIT WHEN c1%NOTFOUND;
-      END LOOP;
 
-      CLOSE c1;
       p_total_succesful_recs := p_total_records - p_total_error_recs;
    EXCEPTION
       WHEN OTHERS
@@ -208,14 +205,13 @@ AS
                                     || SUBSTR (SQLERRM, 1, 200)
                                     || DBMS_UTILITY.format_error_backtrace ());
    END pr_move_edifecs;
-   --> Fetch bulk collect approach 2 (limit without looping)
     PROCEDURE pr_load_pa_data(p_pa_rqst_sid IN pa_request.pa_rqst_sid%TYPE,
                          p_err_code OUT VARCHAR2,
                          p_err_msg OUT VARCHAR2 )
       AS
       BEGIN
         OPEN  g_cur_get_pa_line_info(p_pa_rqst_sid );
-        FETCH g_cur_get_pa_line_info BULK COLLECT INTO gt_pa_ln_info LIMIT c_limit; -- Added limit without loop
+        FETCH g_cur_get_pa_line_info BULK COLLECT INTO gt_pa_ln_info;
         CLOSE g_cur_get_pa_line_info;  
       EXCEPTION
       WHEN OTHERS THEN
@@ -224,5 +220,5 @@ AS
         p_error_msg => SQLERRM,                                                                                                     -- Log Actual Oracle Error Msg/User Defined error message
         p_error_details =>'p_pa_rqst_sid - '||p_pa_rqst_sid||'.'||dbms_utility.format_Error_backtrace());
     END pr_load_pa_data ;
-END pk_fetch_bulk_with_stndrd;
+END pk_fetch_bulk_without_stndrd;
 /
